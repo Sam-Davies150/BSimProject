@@ -11,11 +11,13 @@ import processing.core.PGraphics3D;
 
 import javax.vecmath.Vector3d;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.Vector;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
@@ -30,19 +32,19 @@ public class BSimChemicalFieldTest_2D_Spiral {
         sim.setBound(bounds, bounds, bounds);
         sim.setSimulationTime(120);
 
-        final int boxcount = 64;
+        final int boxcount = 32;
 
-        final double decayRate = 0.07;
-        final double diffusivity = 1380;
-        final double threshold = 3e8;
-        final double quantityadd = 3e10;
+        final double decayRate = 0.00044;
+        final double diffusivity = 0.1;
+        final double threshold = 7e6;
+        final double quantityadd = 5e9;
         final double firstwave = 180;
         final double secondwave = 1440;
 
         final BSimChemicalField field = new BSimChemicalField(sim, new int[]{boxcount, boxcount, boxcount}, diffusivity, decayRate);
 
         final Vector<BSimBacterium> bacteria = new Vector<>();
-        int totbac = 100;
+        int totbac = 200;
 
         // Archimedes Spiral parameters for 2D placement
         final double centerX = bounds / 2.0;
@@ -83,7 +85,7 @@ public class BSimChemicalFieldTest_2D_Spiral {
 
             double x = centerX + effectiveRadius * Math.cos(effectiveAngle);
             double y = centerY + effectiveRadius * Math.sin(effectiveAngle);
-            double z = constantZ;
+            double z = constantZ + (rand.nextDouble() - 0.5) * spiralThickness;
 
             // Check bounds to prevent out of bounds bacteria
             if (x < 0 || x >= bounds || y < 0 || y >= bounds) {
@@ -133,6 +135,7 @@ public class BSimChemicalFieldTest_2D_Spiral {
                         fireStartTime = t;
                         isFiring = true;
                         hasFiredFirstWave = true;
+                        setHasFired(1);
                     }
 
                     if (isFiring && (t - fireStartTime) <= fireDuration) {
@@ -189,62 +192,83 @@ public class BSimChemicalFieldTest_2D_Spiral {
             @Override
             public void before() {
                 super.before();
-                StringBuilder header = new StringBuilder("time");
-                int maxShells = boxcount / 2;
-                for (int r = 0; r < maxShells; r++) header.append(",r").append(r);
+                StringBuilder header = new StringBuilder("time,x,y,z");
                 write(header.toString());
             }
 
             @Override
             public void during() {
-                double voxelSize_um = sim.getBound().x / boxcount;
-                double centerX_um = sim.getBound().x / 2.0;
-                double centerY_um = sim.getBound().y / 2.0;
-                double centerZ_um = sim.getBound().z / 2.0;
-                int maxShells = boxcount / 2;
 
-                StringBuilder line = new StringBuilder(sim.getFormattedTime());
-// Below is parallelised using claude
-                double[] shellAverages = IntStream.range(0, maxShells)
-                        .parallel()
-                        .mapToDouble(r_vox -> {
-                            double r_min = r_vox * voxelSize_um;
-                            double r_max = (r_vox + 1) * voxelSize_um;
-                            double sum = 0.0;
-                            int count = 0;
-
-                            for (int x = 0; x < boxcount; x++) {
-                                for (int y = 0; y < boxcount; y++) {
-                                    int z = 0;
-                                    double x_um = (x + 0.5) * voxelSize_um;
-                                    double y_um = (y + 0.5) * voxelSize_um;
-                                    double z_um = (z + 0.5) * voxelSize_um;
-                                    double dx = x_um - centerX_um;
-                                    double dy = y_um - centerY_um;
-                                    double r = Math.sqrt(dx * dx + dy * dy);
-
-                                    if (r >= r_min && r < r_max) {
-                                        double c = field.getConc(x, y, z);
-                                        if (Double.isFinite(c) && c < 1e20) {
-                                            sum += c;
-                                            count++;
-                                        }
-                                    }
-                                }
-                            }
-
-                            double avg = (count > 0) ? sum / count : 0.0;
-                            return Double.isFinite(avg) ? avg : 0.0;
-                        })
-                        .toArray();
-
-                for (double avg : shellAverages) {
-                    line.append(",").append(avg);
+                List<Vector3d> FiredBac = new ArrayList<>();
+                for (BSimBacterium bac : bacteria) {
+                    if (bac.getHasFired() == 1) {
+                        FiredBac.add(bac.getPosition());
+                    }
                 }
+                Vector3d MaxRBac = null;
+                double maxValue = Double.NEGATIVE_INFINITY;
 
+                for (Vector3d vec : FiredBac) {
+                    if (Math.pow(vec.x - bounds / 2, 2) * Math.pow(vec.y - bounds / 2, 2) > maxValue) {
+                        maxValue = Math.pow(vec.x - bounds / 2, 2) * Math.pow(vec.y - bounds / 2, 2);
+                        MaxRBac = vec;
+                    }
+                }
+                StringBuilder line = new StringBuilder(sim.getFormattedTime());
+                if (MaxRBac == null) line.append(",").append(0).append(",").append(0).append(",").append(0);
+                else line.append(",").append(MaxRBac.x).append(",").append(MaxRBac.y).append(",").append(MaxRBac.z);
                 write(line.toString());
             }
         };
+//                double voxelSize_um = sim.getBound().x / boxcount;
+//                double centerX_um = sim.getBound().x / 2.0;
+//                double centerY_um = sim.getBound().y / 2.0;
+//                double centerZ_um = sim.getBound().z / 2.0;
+//                int maxShells = boxcount / 2;
+//
+//                StringBuilder line = new StringBuilder(sim.getFormattedTime());
+//// Below is parallelised using claude
+//                double[] shellAverages = IntStream.range(0, maxShells)
+//                        .parallel()
+//                        .mapToDouble(r_vox -> {
+//                            double r_min = r_vox * voxelSize_um;
+//                            double r_max = (r_vox + 1) * voxelSize_um;
+//                            double sum = 0.0;
+//                            int count = 0;
+//
+//                            for (int x = 0; x < boxcount; x++) {
+//                                for (int y = 0; y < boxcount; y++) {
+//                                    int z = 0;
+//                                    double x_um = (x + 0.5) * voxelSize_um;
+//                                    double y_um = (y + 0.5) * voxelSize_um;
+//                                    double z_um = (z + 0.5) * voxelSize_um;
+//                                    double dx = x_um - centerX_um;
+//                                    double dy = y_um - centerY_um;
+//                                    double r = Math.sqrt(dx * dx + dy * dy);
+//
+//                                    if (r >= r_min && r < r_max) {
+//                                        double c = field.getConc(x, y, z);
+//                                        if (Double.isFinite(c) && c < 1e20) {
+//                                            sum += c;
+//                                            count++;
+//                                        }
+//                                    }
+//                                }
+//                            }
+//
+//                            double avg = (count > 0) ? sum / count : 0.0;
+//                            return Double.isFinite(avg) ? avg : 0.0;
+//                        })
+//                        .toArray();
+//
+//                for (double avg : shellAverages) {
+//                    line.append(",").append(avg);
+//                }
+//
+//                write(line.toString());
+//            }
+
+  //      };
         sim.addExporter(logger);
 // Claude told me to add this to ensure that the executor is shut down when the simulation ends
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -258,7 +282,7 @@ public class BSimChemicalFieldTest_2D_Spiral {
             }
         }));
 
-        // sim.export();
+        //sim.export();
         sim.preview();
     }
 }

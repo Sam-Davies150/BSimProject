@@ -18,13 +18,16 @@ public class BSimParticle {
 	protected Vector3d force = new Vector3d(); // piconewtons	
 	protected double radius; // microns	
 	protected double brownianForceMagnitude;
-	protected BSim sim; // the environment that the particle exists in	
+	protected BSim sim; // the environment that the particle exists in
+    protected int HasFired;
 		
 	public BSimParticle(BSim sim, Vector3d position, double radius) {	
 		this.sim = sim;
 		this.position = position;
 		setRadius(radius);
-	}	
+        setHasFired(0);
+
+    }
 	
    /**
    * Sets the magnitude of the Brownian force such that var(X(t)) = var(Y(t)) = var(Z(t)) = 2*D*t
@@ -35,8 +38,11 @@ public class BSimParticle {
 	public void setRadius(double r) { radius = r; setBrownianForceMagnitude(); }
 	public void setRadiusFromSurfaceArea(double s) { radius = Math.sqrt(s/(4*Math.PI)); }
 	public void addForce(Vector3d f) { force.add(f); }
-	
-	public Vector3d getPosition() { return position; }
+    public int getHasFired() { return HasFired; }
+    public void setHasFired(int fired) { HasFired = fired; }
+
+
+    public Vector3d getPosition() { return position; }
 	public Vector3d getForce() { return force; }
 	public double getRadius() { return radius; }
 	public double getSurfaceArea() { return surfaceArea(radius); }
