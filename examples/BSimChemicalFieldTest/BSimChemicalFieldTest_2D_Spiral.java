@@ -44,7 +44,7 @@ public class BSimChemicalFieldTest_2D_Spiral {
         final BSimChemicalField field = new BSimChemicalField(sim, new int[]{boxcount, boxcount, boxcount}, diffusivity, decayRate);
 
         final Vector<BSimBacterium> bacteria = new Vector<>();
-        int totbac = 200;
+        int totbac = 2;
 
         // Archimedes Spiral parameters for 2D placement
         final double centerX = bounds / 2.0;
@@ -227,7 +227,6 @@ public class BSimChemicalFieldTest_2D_Spiral {
 //                int maxShells = boxcount / 2;
 //
 //                StringBuilder line = new StringBuilder(sim.getFormattedTime());
-//// Below is parallelised using claude
 //                double[] shellAverages = IntStream.range(0, maxShells)
 //                        .parallel()
 //                        .mapToDouble(r_vox -> {
