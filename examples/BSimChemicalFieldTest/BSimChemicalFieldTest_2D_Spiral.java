@@ -30,7 +30,7 @@ public class BSimChemicalFieldTest_2D_Spiral {
         sim.setTimeFormat("0.000");
         sim.setSolid(true, true, true);
         sim.setBound(bounds, bounds, bounds);
-        sim.setSimulationTime(120);
+        sim.setSimulationTime(10);
 
         final int boxcount = 32;
 
@@ -44,7 +44,7 @@ public class BSimChemicalFieldTest_2D_Spiral {
         final BSimChemicalField field = new BSimChemicalField(sim, new int[]{boxcount, boxcount, boxcount}, diffusivity, decayRate);
 
         final Vector<BSimBacterium> bacteria = new Vector<>();
-        int totbac = 2;
+        int totbac = 500;
 
         // Archimedes Spiral parameters for 2D placement
         final double centerX = bounds / 2.0;

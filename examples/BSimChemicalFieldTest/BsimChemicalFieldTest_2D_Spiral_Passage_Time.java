@@ -63,7 +63,7 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         }
 
         synchronized Double getPassageTime() {
-            return passageTime;
+            return this.passageTime;
         }
     }
 
@@ -81,21 +81,23 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         }
     }
 
-    public static void main(String[] args) {
+    public static void run(double decayRate,double diffusivity,double threshold,double quantityadd,int subdivisionLevels) {
         final int bounds = 110;
         BSim sim = new BSim();
         sim.setDt(0.002);
         sim.setTimeFormat("0.000");
         sim.setSolid(true, true, true);
         sim.setBound(bounds, bounds, bounds);
-        sim.setSimulationTime(120);
+        if(subdivisionLevels > 9){sim.setSimulationTime(10);}
+        else if(subdivisionLevels > 5){sim.setSimulationTime(50);}
+        else {sim.setSimulationTime(100);}
 
         final int boxcount = 32;
 
-        final double decayRate = 0.00044;
-        final double diffusivity = 0.5;
-        final double threshold = 3e6;
-        final double quantityadd = 1e12;
+//        final double decayRate = 0.00044;
+//        final double diffusivity = 0.5;
+//        final double threshold = 3e6;
+//        final double quantityadd = 1e12;
         final double firstwave = 180;
         final double secondwave = 1440;
 
@@ -121,7 +123,7 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         Random rand = new Random();
 
         // NEW: Subdivision parameters
-        final int subdivisionLevels = 20; // Number of recursive subdivisions (adjust for more/fewer bacteria)
+//        final int subdivisionLevels = 5; // Number of recursive subdivisions (adjust for more/fewer bacteria)
         // subdivisionLevels = 1 -> 2 bacteria (start, end)
         // subdivisionLevels = 2 -> 3 bacteria (start, middle, end)
         // subdivisionLevels = 3 -> 5 bacteria
@@ -185,35 +187,33 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         });
 
         String resultsDir = BSimUtils.generateDirectoryPath("./results/");
-        BSimLogger logger = new BSimLogger(sim, resultsDir + "Archimedes_Spiral_Intensity.csv") {
+        String resultsPath = resultsDir + "Passage_Time4.csv";
+        BSimLogger logger = new BSimLogger(sim, resultsPath) {
             @Override
             public void before() {
                 super.before();
-                StringBuilder header = new StringBuilder("time,x,y,z");
-                write(header.toString());
+                java.io.File f = new java.io.File(resultsPath);
+                if (f.length() == 0) {
+                    StringBuilder header = new StringBuilder("decayRate,diffusivity,threshold,quantityAdd,subdivisionLevel,Number,PassageTime");
+                    write(header.toString());
+                }
             }
+
 
             @Override
             public void during() {
-                List<Vector3d> FiredBac = new ArrayList<>();
-                for (BSimBacterium bac : bacteria) {
-                    if (bac.getHasFired() == 1) {
-                        FiredBac.add(bac.getPosition());
-                    }
-                }
-                Vector3d MaxRBac = null;
-                double maxValue = Double.NEGATIVE_INFINITY;
+                if(sim.getTime() == sim.getSimulationTime()) {
+                    StringBuilder line = new StringBuilder();
+                    line.append(decayRate).append(",").
+                            append(diffusivity).append(",").
+                            append(threshold).append(",").
+                            append(quantityadd).append(",").
+                            append(subdivisionLevels).append(",").
+                            append(bacteria.size()).append(",")
+                            .append(passageTimeTracker.getPassageTime());
 
-                for (Vector3d vec : FiredBac) {
-                    if (Math.pow(vec.x - bounds / 2, 2) * Math.pow(vec.y - bounds / 2, 2) > maxValue) {
-                        maxValue = Math.pow(vec.x - bounds / 2, 2) * Math.pow(vec.y - bounds / 2, 2);
-                        MaxRBac = vec;
-                    }
+                    write(line.toString());
                 }
-                StringBuilder line = new StringBuilder(sim.getFormattedTime());
-                if (MaxRBac == null) line.append(",").append(0).append(",").append(0).append(",").append(0);
-                else line.append(",").append(MaxRBac.x).append(",").append(MaxRBac.y).append(",").append(MaxRBac.z);
-                write(line.toString());
             }
         };
 
@@ -230,7 +230,8 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
             }
         }));
 
-        sim.preview();
+        //sim.preview();
+        sim.export();
     }
 
     // Recursive function to create bacteria at midpoints along the spiral
@@ -298,7 +299,7 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
 
         // Small angular variation for natural distribution
         double angularOffset = (rand.nextDouble() - 0.5) * 0.1;
-        double effectiveAngle = angle + angularOffset;
+        double effectiveAngle = angle;// + angularOffset;
 
         double x = centerX + effectiveRadius * Math.cos(effectiveAngle);
         double y = centerY + effectiveRadius * Math.sin(effectiveAngle);
@@ -386,6 +387,32 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         p.setGoal(field);
         if (!p.intersection(bacteria)) {
             bacteria.add(p);
+        }
+    }
+    public static void main(String[] args){
+        double[] decayRates = {0.00044};
+        double[] diffusivities = {0.5};
+        double[] thresholds = {3e6};
+        double[] quantityAdds = {1e12};
+        int MaxSubdivisions = 10;
+
+
+        for (double decayRate : decayRates) {
+            for (double diffusivity : diffusivities) {
+                for (double threshold : thresholds) {
+                    for (double quantityAdd : quantityAdds) {
+                        for (int level = 1; level <= MaxSubdivisions; level++) {
+                            System.out.println("Running simulation with:");
+                            System.out.println("decayRate=" + decayRate +
+                                    ", diffusivity=" + diffusivity +
+                                    ", threshold=" + threshold +
+                                    ", quantityAdd=" + quantityAdd +
+                                    ", level=" + level);
+                            run(decayRate, diffusivity, threshold, quantityAdd, level);
+                        }
+                    }
+                }
+            }
         }
     }
 }
