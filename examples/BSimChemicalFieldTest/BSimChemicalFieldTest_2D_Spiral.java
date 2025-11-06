@@ -209,8 +209,8 @@ public class BSimChemicalFieldTest_2D_Spiral {
                 double maxValue = Double.NEGATIVE_INFINITY;
 
                 for (Vector3d vec : FiredBac) {
-                    if (Math.pow(vec.x - bounds / 2, 2) * Math.pow(vec.y - bounds / 2, 2) > maxValue) {
-                        maxValue = Math.pow(vec.x - bounds / 2, 2) * Math.pow(vec.y - bounds / 2, 2);
+                    if (Math.sqrt(Math.pow(vec.x - centerX, 2) * Math.pow(vec.y - centerY, 2)) > maxValue) {
+                        maxValue = Math.sqrt(Math.pow(vec.x - centerX, 2) * Math.pow(vec.y - centerY, 2));
                         MaxRBac = vec;
                     }
                 }
