@@ -81,16 +81,14 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         }
     }
 
-    public static void run(double decayRate,double diffusivity,double threshold,double quantityadd,int subdivisionLevels) {
+    public static double run(double decayRate,double diffusivity,double threshold,double quantityadd,int subdivisionLevels,double SimTime) {
         final int bounds = 110;
         BSim sim = new BSim();
         sim.setDt(0.002);
         sim.setTimeFormat("0.000");
         sim.setSolid(true, true, true);
         sim.setBound(bounds, bounds, bounds);
-        if(subdivisionLevels > 9){sim.setSimulationTime(10);}
-        else if(subdivisionLevels > 5){sim.setSimulationTime(50);}
-        else {sim.setSimulationTime(100);}
+        sim.setSimulationTime(SimTime);
 
         final int boxcount = 32;
 
@@ -232,6 +230,9 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
 
         //sim.preview();
         sim.export();
+
+        if(passageTimeTracker.getPassageTime() == null){return 240;}
+        else{return 2*passageTimeTracker.getPassageTime();}
     }
 
     // Recursive function to create bacteria at midpoints along the spiral
@@ -390,6 +391,7 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         }
     }
     public static void main(String[] args){
+        double SimTime = 120;
         double[] decayRates = {0.00044};
         double[] diffusivities = {0.5};
         double[] thresholds = {3e6};
@@ -407,8 +409,11 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
                                     ", diffusivity=" + diffusivity +
                                     ", threshold=" + threshold +
                                     ", quantityAdd=" + quantityAdd +
-                                    ", level=" + level);
-                            run(decayRate, diffusivity, threshold, quantityAdd, level);
+                                    ", level=" + level+
+                                    SimTime);
+                            SimTime = run(decayRate, diffusivity, threshold, quantityAdd, level,SimTime);
+                            if (SimTime > 120){SimTime = 120;}
+                            if (level >= 3){SimTime = 120;}
                         }
                     }
                 }
