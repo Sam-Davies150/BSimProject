@@ -40,6 +40,7 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         private Double startBacteriumFireTime = null;
         private Double endBacteriumFireTime = null;
         private Double passageTime = null;
+        //private boolean passageTimeComplete = false;
 
         synchronized void setStartFire(double time) {
             if (this.startBacteriumFireTime == null) {
@@ -65,6 +66,8 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         synchronized Double getPassageTime() {
             return this.passageTime;
         }
+
+        //synchronized boolean isPassageTimeComplete() {return this.passageTimeComplete;}
     }
 
     // Adding a class below to implement the arc length calculation for the integral
@@ -81,14 +84,14 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         }
     }
 
-    public static double run(double decayRate,double diffusivity,double threshold,double quantityadd,int subdivisionLevels,double SimTime) {
+    public static void run(double decayRate,double diffusivity,double threshold,double quantityadd,int subdivisionLevels) {
         final int bounds = 110;
         BSim sim = new BSim();
         sim.setDt(0.002);
         sim.setTimeFormat("0.000");
         sim.setSolid(true, true, true);
         sim.setBound(bounds, bounds, bounds);
-        sim.setSimulationTime(SimTime);
+        sim.setSimulationTime(150);
 
         final int boxcount = 32;
 
@@ -173,6 +176,12 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
             public void tick() {
                 bacteria.parallelStream().forEach(b -> b.action());
                 field.update();
+
+                if (passageTimeTracker.getPassageTime() != null) {
+                    System.out.println("Passage complete — stopping simulation at t=" + sim.getTime());
+                    sim.setSimulationTime(sim.getTime());
+
+                }
             }
         });
 
@@ -185,7 +194,7 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         });
 
         String resultsDir = BSimUtils.generateDirectoryPath("./results/");
-        String resultsPath = resultsDir + "Passage_Time4.csv";
+        String resultsPath = resultsDir + "test.csv";
         BSimLogger logger = new BSimLogger(sim, resultsPath) {
             @Override
             public void before() {
@@ -194,13 +203,14 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
                 if (f.length() == 0) {
                     StringBuilder header = new StringBuilder("decayRate,diffusivity,threshold,quantityAdd,subdivisionLevel,Number,PassageTime");
                     write(header.toString());
+
                 }
             }
 
 
             @Override
             public void during() {
-                if(sim.getTime() == sim.getSimulationTime()) {
+                if(passageTimeTracker.getPassageTime() != null | sim.getTime() == 150) {
                     StringBuilder line = new StringBuilder();
                     line.append(decayRate).append(",").
                             append(diffusivity).append(",").
@@ -209,7 +219,6 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
                             append(subdivisionLevels).append(",").
                             append(bacteria.size()).append(",")
                             .append(passageTimeTracker.getPassageTime());
-
                     write(line.toString());
                 }
             }
@@ -230,9 +239,6 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
 
         //sim.preview();
         sim.export();
-
-        if(passageTimeTracker.getPassageTime() == null){return 240;}
-        else{return 2*passageTimeTracker.getPassageTime();}
     }
 
     // Recursive function to create bacteria at midpoints along the spiral
@@ -391,12 +397,12 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
         }
     }
     public static void main(String[] args){
-        double SimTime = 120;
+        //double SimTime = 120;
         double[] decayRates = {0.00044};
-        double[] diffusivities = {0.5};
+        double[] diffusivities = {0.1};
         double[] thresholds = {3e6};
         double[] quantityAdds = {1e12};
-        int MaxSubdivisions = 10;
+        int MaxSubdivisions = 5;
 
 
         for (double decayRate : decayRates) {
@@ -409,11 +415,9 @@ public class BsimChemicalFieldTest_2D_Spiral_Passage_Time {
                                     ", diffusivity=" + diffusivity +
                                     ", threshold=" + threshold +
                                     ", quantityAdd=" + quantityAdd +
-                                    ", level=" + level+
-                                    SimTime);
-                            SimTime = run(decayRate, diffusivity, threshold, quantityAdd, level,SimTime);
-                            if (SimTime > 120){SimTime = 120;}
-                            if (level >= 3){SimTime = 120;}
+                                    ", level=" + level);
+                            run(decayRate, diffusivity, threshold, quantityAdd, level);
+
                         }
                     }
                 }
